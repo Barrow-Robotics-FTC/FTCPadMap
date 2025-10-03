@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider"
+import { Toaster } from "sonner"
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 export default function MyApp({ Component, pageProps }: AppProps) {
   return (
     <ThemeProvider defaultTheme='dark' attribute='class'>
+      <Toaster position='bottom-center' richColors theme='dark' />
       <Component {...pageProps} />
     </ThemeProvider>
   );
