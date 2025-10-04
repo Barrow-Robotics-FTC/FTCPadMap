@@ -14,24 +14,110 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Download } from 'lucide-react';
+import { Download, Code, Image, Upload } from 'lucide-react';
 
-class GamepadButton {
-  button_id: number
+function addPercents(a: string, b: string): string {
+  const numA = parseFloat(a.replace('%', ''));
+  const numB = parseFloat(b.replace('%', ''));
+  const sum = numA + numB;
+  return `${sum}%`;
+}
+
+class BaseGamepadItem {
+  id: number
   title: string
+  map: string | null = null
+  prev_state: boolean = false
+  x: string
+  y: string
+  text_dir: "left" | "right"
+  line_end_x: string
+  line_end_y: string
+  end_line_end_x: string
+  title_text: string
+  text_x: string
+  title_text_y: string
+  map_text_y: string
 
-  map: string | null = null;
-  press_type: "Rising Edge" | "Falling Edge" | "Press" | null = null;
-  prev_pressed: boolean = false;
-
-  constructor(button_id: number, title: string) {
-    this.button_id = button_id
+  constructor(id: number, title: string, x: string, y: string,
+    line_dir: "left" | "right" = "left", line_end_x: string, line_end_y: string
+  ) {
+    this.id = id
     this.title = title
+    this.x = x
+    this.y = y
+    this.text_dir = line_dir
+    this.line_end_x = line_end_x
+    this.line_end_y = line_end_y
+    this.end_line_end_x = this.text_dir === "left" ? addPercents(line_end_x, "-10%") : addPercents(line_end_x, "10%")
+    this.title_text = `${this.title} ${this.getType()}`
+    this.text_x = this.text_dir === "left" ? addPercents(this.end_line_end_x, "0.5%") : addPercents(this.line_end_x, "0.5%")
+    this.title_text_y = addPercents(this.line_end_y, "-1%")
+    this.map_text_y = addPercents(this.line_end_y, "2.25%")
+  }
+
+  getType(): string { // Edited by the child class
+    return ""
+  }
+
+  getItemInfo(): string | null {
+    return null
+  }
+
+  mapTo(map: string): void {
+    this.map = map
+  }
+
+  overlay(): JSX.Element {
+    return (
+      <>
+        <line x1={this.x} y1={this.y} x2={this.line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="1" />
+        <line x1={this.line_end_x} y1={this.line_end_y} x2={this.end_line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="1" />
+        
+        {/* Title above line */}
+        <text
+          x={this.text_x}
+          y={this.title_text_y}
+          fill="white"
+          fontSize="1.1rem"
+          fontWeight="bold"
+        >
+          {`${this.title} ${this.getType()}`}
+        </text>
+
+        <text
+          x={this.text_x}
+          y={this.map_text_y}
+          fill="white"
+          fontSize="0.8rem"
+        >
+          {this.map ? this.map : "Unassigned"}
+        </text>
+      </>
+    )
+  }
+}
+
+class GamepadButton extends BaseGamepadItem {
+  press_type: "Rise" | "Fall" | "Press" | null = null;
+
+  constructor(button_id: number, title: string, x: string, y: string,
+    line_direction: "left" | "right", line_end_x: string, line_end_y: string
+  ) {
+    super(button_id, title, x, y, line_direction, line_end_x, line_end_y)
+  }
+
+  getType(): string {
+    return "Button"
+  }
+
+  getItemInfo(): string | null {
+    return this.press_type
   }
 
   toJSON() {
     return {
-      button_id: this.button_id,
+      id: this.id,
       title: this.title,
       map: this.map,
       press_type: this.press_type,
@@ -39,21 +125,20 @@ class GamepadButton {
   }
 }
 
-class GamepadAxis {
-  axis_id: number
-  title: string
+class GamepadAxis extends BaseGamepadItem {
+  constructor(id: number, title: string, x: string, y: string,
+    line_direction: "left" | "right", line_end_x: string, line_end_y: string
+  ) {
+    super(id, title, x, y, line_direction, line_end_x, line_end_y)
+  }
 
-  map: string | null = null;
-  prev_moved: boolean = false
-
-  constructor(axis_id: number, title: string) {
-    this.axis_id = axis_id
-    this.title = title
+  getType(): string {
+    return "Axis"
   }
 
   toJSON() {
     return {
-      axis_id: this.axis_id,
+      axis_id: this.id,
       title: this.title,
       map: this.map,
     }
@@ -83,71 +168,85 @@ class Gamepad {
 const F310_GAMEPAD = new Gamepad(
   'Logitech F310',
   [
-    new GamepadButton(0, 'A'),
-    new GamepadButton(1, 'B'),
-    new GamepadButton(2, 'X'),
-    new GamepadButton(3, 'Y'),
-    new GamepadButton(4, 'Left Bumper'),
-    new GamepadButton(5, 'Right bumper'),
-    new GamepadButton(6, 'Left Trigger'),
-    new GamepadButton(7, 'Right Trigger'),
-    new GamepadButton(8, 'Back'),
-    new GamepadButton(9, 'Start'),
-    new GamepadButton(10, 'Left Stick Button'),
-    new GamepadButton(11, 'Right Stick Button'),
-    new GamepadButton(12, 'D-Pad Up'),
-    new GamepadButton(13, 'D-Pad Down'),
-    new GamepadButton(14, 'D-Pad Left'),
-    new GamepadButton(15, 'D-Pad Right'),
+    new GamepadButton(0, 'A', "63%", "52.5%", "right", "75%", "57%"),
+    new GamepadButton(1, 'B', "66.5%", "45.25%", "right", "75%", "49.5%"),
+    new GamepadButton(2, 'X', "59.75%", "45.25%", "right", "75%", "41.5%"),
+    new GamepadButton(3, 'Y', "63%", "38.5%", "right", "75%", "34%"),
+    new GamepadButton(4, 'Left Bumper', "36.75%", "24%", "left", "30%", "25%"),
+    new GamepadButton(5, 'Right Bumper', "63.5%", "24%" , "right", "70.25%", "25%"),
+    new GamepadButton(6, 'Left Trigger', "37.75%", "22.5%", "left", "34%", "17%"),
+    new GamepadButton(7, 'Right Trigger', "62.5%", "22.5%", "right", "66.25%", "17%"),
+    new GamepadButton(8, 'Back', "45.5%", "38.25%", "right", "44%", "14%"),
+    new GamepadButton(9, 'Start', "54.75%", "38.25%", "left", "60%", "20%"),
+    new GamepadButton(10, 'Left Stick', "43.5%", "60.75%", "left", "32%", "91%"),
+    new GamepadButton(11, 'Right Stick', "56.5%", "60.75%", "right", "68%", "91%"),
+    new GamepadButton(12, 'D-Pad Up', "37.1%", "40.5%", "left", "25%", "34%"),
+    new GamepadButton(13, 'D-Pad Down', "37.1%", "49.5%", "left", "25%", "57%"),
+    new GamepadButton(14, 'D-Pad Left', "35%", "45%", "left", "25%", "41.5%"),
+    new GamepadButton(15, 'D-Pad Right', "39%", "45%", "left", "25%", "49.5%"),
   ],
   [
-    new GamepadAxis(0, 'Left Stick X'),
-    new GamepadAxis(1, 'Left Stick Y'),
-    new GamepadAxis(2, 'Right Stick X'),
-    new GamepadAxis(3, 'Right Stick Y'),
+    new GamepadAxis(0, 'Left Stick X', "43.5%", "60.75%", "left", "46.87%", "85%"),
+    new GamepadAxis(1, 'Left Stick Y', "43.5%", "60.75%", "left", "48%", "93%"),
+    new GamepadAxis(2, 'Right Stick X', "56.5%", "60.75%", "right", "53.13%", "85%"),
+    new GamepadAxis(3, 'Right Stick Y', "56.5%", "60.75%", "right", "52%", "93%"),
   ],
 )
 
+enum GamepadState {
+  DISCONNECTED,
+  CONNECTED,
+  READY
+}
+
 export default function Home() {
-  const gamepad_instance = F310_GAMEPAD
+  const gamepadInstance = F310_GAMEPAD
   const GAMEPAD_IMAGE = "controllers/logitech_f310.png"
 
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [gamepadState, setGamepadState] = useState<GamepadState>(GamepadState.DISCONNECTED)
+  const gamepadStateRef = useRef(gamepadState); // Seperate ref for the loop
+
+  const [dialogOpen, setDialogOpen] = useState<boolean>(false)
   const [currentSelectionType, setCurrentSelectionType] = useState<"button" | "axis">("button")
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
-  const [functionName, setFunctionName] = useState("")
-  const [pressType, setPressType] = useState<"Rising Edge" | "Falling Edge" | "Press">("Press")
+  const [functionName, setFunctionName] = useState<string>("")
+  const [pressType, setPressType] = useState<"Rise" | "Fall" | "Press">("Press")
+
+  useEffect(() => {
+    gamepadStateRef.current = gamepadState;
+  }, [gamepadState]);
 
   const loop = () => {
     const gamepad = navigator.getGamepads()[0]
-    if (gamepad) { // If the gamepad is connected
+    if (gamepadStateRef.current === GamepadState.READY && gamepad) { // If the gamepad is ready
       gamepad.buttons.forEach((btn, i) => { // For each button
-        if (gamepad_instance.buttons[i]) { // If the buttton is known to the gamepad
-          const gamepad_instance_button = gamepad_instance.buttons[i]
-          if (btn.pressed && ! gamepad_instance_button.prev_pressed) { // If the button is pressed and was not previously pressed
+        if (gamepadInstance.buttons[i]) { // If the buttton is known to the gamepad
+          const gamepadInstance_button = gamepadInstance.buttons[i]
+          if (btn.pressed && ! gamepadInstance_button.prev_state) { // If the button is pressed and was not previously pressed
             setCurrentSelectionType("button")
-            setSelectedItem(gamepad_instance_button.title)
-            setFunctionName(gamepad_instance_button.map || "")
-            setPressType(gamepad_instance_button.press_type || "Press")
+            setSelectedItem(gamepadInstance_button.title)
+            setFunctionName(gamepadInstance_button.map || "")
+            setPressType(gamepadInstance_button.press_type || "Press")
             setDialogOpen(true)
           }
-          gamepad_instance_button.prev_pressed = btn.pressed
+          gamepadInstance_button.prev_state = btn.pressed
         }
       })
 
       gamepad.axes.forEach((axis, i) => { // For each axis
-        if (gamepad_instance.axes[i]) { // If the axis is known to the gamepad
-          const gamepad_instance_axis = gamepad_instance.axes[i]
-          if (Math.abs(axis) > 0.5 && !gamepad_instance_axis.prev_moved) { // If the axis is moved
+        if (gamepadInstance.axes[i]) { // If the axis is known to the gamepad
+          const gamepadInstance_axis = gamepadInstance.axes[i]
+          if (Math.abs(axis) > 0.5 && !gamepadInstance_axis.prev_state) { // If the axis is moved
             setCurrentSelectionType("axis")
-            setSelectedItem(gamepad_instance_axis.title)
-            setFunctionName(gamepad_instance_axis.map || "")
+            setSelectedItem(gamepadInstance_axis.title)
+            setFunctionName(gamepadInstance_axis.map || "")
             setDialogOpen(true)
           }
-          gamepad_instance_axis.prev_moved = Math.abs(axis) > 0.5
+          gamepadInstance_axis.prev_state = Math.abs(axis) > 0.5
         }
       })
     }
+
     requestAnimationFrame(loop)
   }
 
@@ -158,14 +257,15 @@ export default function Home() {
     }
 
     if (currentSelectionType === "button") {
-      const button = gamepad_instance.buttons.find(btn => btn.title === selectedItem)
+      const button = gamepadInstance.buttons.find(btn => btn.title === selectedItem)
       if (button) {
-        button.map = functionName
+        button.mapTo(functionName)
         button.press_type = pressType
       }
     } else if (currentSelectionType === "axis") {
-      const axis = gamepad_instance.axes.find(axis => axis.title === selectedItem)
+      const axis = gamepadInstance.axes.find(axis => axis.title === selectedItem)
       if (axis) {
+        axis.mapTo(functionName)
         axis.map = functionName
       }
     } else {
@@ -178,16 +278,26 @@ export default function Home() {
   }
 
   useEffect(() => {
-    window.addEventListener('gamepadconnected', () => {
-      console.log('Gamepad connected')
-      toast.success('Gamepad connected!')
-      requestAnimationFrame(loop)
-    })
+    const onConnect = () => {
+      setGamepadState(GamepadState.CONNECTED)
+      toast.success("Gamepad connected!");
+      setTimeout(() => setGamepadState(GamepadState.READY), 500);
+      requestAnimationFrame(loop);
+    };
+
+    const onDisconnect = () => {
+      toast.warning("Gamepad disconnected!");
+      setGamepadState(GamepadState.DISCONNECTED);
+    };
+
+    window.addEventListener("gamepadconnected", onConnect);
+    window.addEventListener("gamepaddisconnected", onDisconnect);
+
     return () => {
-        toast.warning('Gamepad disconnected!')
-        window.removeEventListener('gamepadconnected', loop)
-    }
-  }, [])
+      window.removeEventListener("gamepadconnected", onConnect);
+      window.removeEventListener("gamepaddisconnected", onDisconnect);
+    };
+  }, []);
 
   return (
     <div className="relative flex w-screen h-screen">
@@ -197,12 +307,31 @@ export default function Home() {
           <h1 className="text-xl font-bold pointer-events-none">FTC Gamepad Mapper</h1>
           <h1 className="text-sm text-zinc-700 pointer-events-none">Press a button or move an axis on your gamepad to start mapping</h1>
         </div>
-        <Button variant={"outline"} onClick={() => toast.info("Top right button clicked")} className="absolute right-2 top-0 pointer-events-auto">
-          <Download className="h-6 w-6" />
-        </Button>
+        <div className='absolute right-3 top-0 pointer-events-auto space-x-3'>
+          <Button variant={"outline"} onClick={() => toast.info("Download button clicked")}>
+            <Download className="h-6 w-6" />
+          </Button>
+          <Button variant={"outline"} onClick={() => toast.info("Upload button clicked")}>
+            <Upload className="h-6 w-6" />
+          </Button>
+          <Button variant={"outline"} onClick={() => toast.info("Code button clicked")}>
+            <Code className="h-6 w-6" />
+          </Button>
+          <Button variant={"outline"} onClick={() => toast.info("Image button clicked")}>
+            <Image className="h-6 w-6" />
+          </Button>
+        </div>
       </div>
 
-      {/* Main content */}
+      <svg className='flex w-screen h-screen absolute z-40 pointer-events-none'>
+        {gamepadInstance.buttons.map((btn, i) => (
+          btn.overlay()
+        ))}
+        {gamepadInstance.axes.map((axis, i) => (
+          axis.overlay()
+        ))}
+      </svg>
+
       <div className="flex w-full h-full items-center justify-center">
         <img
           src={GAMEPAD_IMAGE}
@@ -257,8 +386,8 @@ export default function Home() {
                     <SelectValue placeholder="Select press type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Rising Edge">Rising Edge</SelectItem>
-                    <SelectItem value="Falling Edge">Falling Edge</SelectItem>
+                    <SelectItem value="Rise">Rise</SelectItem>
+                    <SelectItem value="Fall">Fall</SelectItem>
                     <SelectItem value="Press">Press</SelectItem>
                   </SelectContent>
                 </Select>
@@ -274,6 +403,14 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+     <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center space-y-2 backdrop-blur-lg grayscale bg-black/30 
+        transition-all duration-1000 ease-in-out ${gamepadState !== GamepadState.DISCONNECTED ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+        <h1 className="text-2xl font-bold">Gamepad not connected</h1>
+        <h1 className="text-sm font-thin">
+          Please connect your gamepad and press a button to continue
+        </h1>
+      </div>
     </div>
   )
 }
