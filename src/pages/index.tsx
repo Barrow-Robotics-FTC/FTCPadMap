@@ -155,8 +155,8 @@ const F310_GAMEPAD = new Gamepad(
     new GamepadButton(11, 'Right Stick', "56.5%", "60.75%", "right", "70%", "88%"),
     new GamepadButton(12, 'D-Pad Up', "37.1%", "40.5%", "left", "25%", "34%"),
     new GamepadButton(13, 'D-Pad Down', "37.1%", "49.5%", "left", "25%", "57%"),
-    new GamepadButton(14, 'D-Pad Left', "35%", "45%", "left", "25%", "41.5%"),
-    new GamepadButton(15, 'D-Pad Right', "39%", "45%", "left", "25%", "49.5%"),
+    new GamepadButton(14, 'D-Pad Left', "35%", "45%", "left", "25%", "49.5%"),
+    new GamepadButton(15, 'D-Pad Right', "39%", "45%", "left", "25%", "41.5%"),
   ],
   [
     new GamepadAxis(0, 'Left Stick X', "43.5%", "60.75%", "left", "46.87%", "85%"),
