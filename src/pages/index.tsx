@@ -1,20 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription,
+  AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
-} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { Download, Code, Image, Upload } from 'lucide-react';
+import { Download, Code, Image, Upload, Check } from 'lucide-react';
 
 function addPercents(a: string, b: string): string {
   const numA = parseFloat(a.replace('%', ''));
@@ -28,6 +21,7 @@ class BaseGamepadItem {
   title: string
   map: string | null = null
   prev_state: boolean = false
+  export_in_code: boolean = true
   x: string
   y: string
   text_dir: "left" | "right"
@@ -39,9 +33,8 @@ class BaseGamepadItem {
   title_text_y: string
   map_text_y: string
 
-  constructor(id: number, title: string, x: string, y: string,
-    line_dir: "left" | "right" = "left", line_end_x: string, line_end_y: string
-  ) {
+
+  constructor(id: number, title: string, x: string, y: string, line_dir: "left" | "right" = "left", line_end_x: string, line_end_y: string) {
     this.id = id
     this.title = title
     this.x = x
@@ -60,10 +53,6 @@ class BaseGamepadItem {
     return ""
   }
 
-  getItemInfo(): string | null {
-    return null
-  }
-
   mapTo(map: string): void {
     this.map = map
   }
@@ -74,23 +63,11 @@ class BaseGamepadItem {
         <line x1={this.x} y1={this.y} x2={this.line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="1" />
         <line x1={this.line_end_x} y1={this.line_end_y} x2={this.end_line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="1" />
         
-        {/* Title above line */}
-        <text
-          x={this.text_x}
-          y={this.title_text_y}
-          fill="white"
-          fontSize="1.1rem"
-          fontWeight="bold"
-        >
+        <text x={this.text_x} y={this.title_text_y} fill="white" fontSize="1.1rem" fontWeight="bold">
           {`${this.title} ${this.getType()}`}
         </text>
 
-        <text
-          x={this.text_x}
-          y={this.map_text_y}
-          fill="white"
-          fontSize="0.8rem"
-        >
+        <text x={this.text_x} y={this.map_text_y} fill="white" fontSize="0.8rem">
           {this.map ? this.map : "Unassigned"}
         </text>
       </>
@@ -101,18 +78,12 @@ class BaseGamepadItem {
 class GamepadButton extends BaseGamepadItem {
   press_type: "Rise" | "Fall" | "Press" | null = null;
 
-  constructor(button_id: number, title: string, x: string, y: string,
-    line_direction: "left" | "right", line_end_x: string, line_end_y: string
-  ) {
+  constructor(button_id: number, title: string, x: string, y: string, line_direction: "left" | "right", line_end_x: string, line_end_y: string) {
     super(button_id, title, x, y, line_direction, line_end_x, line_end_y)
   }
 
   getType(): string {
     return "Button"
-  }
-
-  getItemInfo(): string | null {
-    return this.press_type
   }
 
   toJSON() {
@@ -126,9 +97,7 @@ class GamepadButton extends BaseGamepadItem {
 }
 
 class GamepadAxis extends BaseGamepadItem {
-  constructor(id: number, title: string, x: string, y: string,
-    line_direction: "left" | "right", line_end_x: string, line_end_y: string
-  ) {
+  constructor(id: number, title: string, x: string, y: string, line_direction: "left" | "right", line_end_x: string, line_end_y: string) {
     super(id, title, x, y, line_direction, line_end_x, line_end_y)
   }
 
@@ -211,6 +180,7 @@ export default function Home() {
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [functionName, setFunctionName] = useState<string>("")
   const [pressType, setPressType] = useState<"Rise" | "Fall" | "Press">("Press")
+  const [exportInCode, setExportInCode] = useState<boolean>(false)
 
   useEffect(() => {
     gamepadStateRef.current = gamepadState;
@@ -219,30 +189,27 @@ export default function Home() {
   const loop = () => {
     const gamepad = navigator.getGamepads()[0]
     if (gamepadStateRef.current === GamepadState.READY && gamepad) { // If the gamepad is ready
-      gamepad.buttons.forEach((btn, i) => { // For each button
-        if (gamepadInstance.buttons[i]) { // If the buttton is known to the gamepad
-          const gamepadInstance_button = gamepadInstance.buttons[i]
-          if (btn.pressed && ! gamepadInstance_button.prev_state) { // If the button is pressed and was not previously pressed
-            setCurrentSelectionType("button")
-            setSelectedItem(gamepadInstance_button.title)
-            setFunctionName(gamepadInstance_button.map || "")
-            setPressType(gamepadInstance_button.press_type || "Press")
+      [...gamepad.buttons, ...gamepad.axes].forEach((item, i) => { // For each button and axis
+        const type = i < gamepad.buttons.length ? "button" : "axis"
+        const index = i < gamepad.buttons.length ? i : i - gamepad.buttons.length 
+        const gamepadInstanceItem = type === "button" ? gamepadInstance.buttons[index] : gamepadInstance.axes[index]
+        
+        if (gamepadInstanceItem) { // If the item is known to the gamepad
+          const condition = type === "button" ? gamepad.buttons[index].pressed : Math.abs(gamepad.axes[index]) > 0.5
+          
+          if (condition && !gamepadInstanceItem.prev_state) { // If the item is pressed/moved and was not previously pressed
+            setCurrentSelectionType(type)
+            setSelectedItem(gamepadInstanceItem.title)
+            setFunctionName(gamepadInstanceItem.map || "")
+            setExportInCode(gamepadInstanceItem.export_in_code || true)
             setDialogOpen(true)
           }
-          gamepadInstance_button.prev_state = btn.pressed
-        }
-      })
 
-      gamepad.axes.forEach((axis, i) => { // For each axis
-        if (gamepadInstance.axes[i]) { // If the axis is known to the gamepad
-          const gamepadInstance_axis = gamepadInstance.axes[i]
-          if (Math.abs(axis) > 0.5 && !gamepadInstance_axis.prev_state) { // If the axis is moved
-            setCurrentSelectionType("axis")
-            setSelectedItem(gamepadInstance_axis.title)
-            setFunctionName(gamepadInstance_axis.map || "")
-            setDialogOpen(true)
+          if (gamepadInstanceItem instanceof GamepadButton) { // If the item is a button
+            setPressType(gamepadInstanceItem.press_type || "Press")
           }
-          gamepadInstance_axis.prev_state = Math.abs(axis) > 0.5
+
+          gamepadInstanceItem.prev_state = condition
         }
       })
     }
@@ -256,21 +223,22 @@ export default function Home() {
         return
     }
 
-    if (currentSelectionType === "button") {
-      const button = gamepadInstance.buttons.find(btn => btn.title === selectedItem)
-      if (button) {
-        button.mapTo(functionName)
-        button.press_type = pressType
-      }
-    } else if (currentSelectionType === "axis") {
-      const axis = gamepadInstance.axes.find(axis => axis.title === selectedItem)
-      if (axis) {
-        axis.mapTo(functionName)
-        axis.map = functionName
-      }
-    } else {
+    if (currentSelectionType !== "button" && currentSelectionType !== "axis") {
       toast.error("Internal error: Invalid selection type.")
-      return;
+      return
+    }
+
+    const searching_item = currentSelectionType === "button" ? gamepadInstance.buttons : gamepadInstance.axes
+    const item = searching_item.find(item => item.title === selectedItem)
+    if (!item) {
+      toast.error("Internal error: Invalid selected item.")
+      return
+    }
+
+    item.mapTo(functionName)
+    item.export_in_code = exportInCode
+    if (item instanceof GamepadButton) {
+      item.press_type = pressType
     }
     
     setDialogOpen(false)
@@ -324,20 +292,12 @@ export default function Home() {
       </div>
 
       <svg className='flex w-screen h-screen absolute z-40 pointer-events-none'>
-        {gamepadInstance.buttons.map((btn, i) => (
-          btn.overlay()
-        ))}
-        {gamepadInstance.axes.map((axis, i) => (
-          axis.overlay()
-        ))}
+        {gamepadInstance.buttons.map((btn, i) => ( btn.overlay() ))}
+        {gamepadInstance.axes.map((axis, i) => ( axis.overlay() ))}
       </svg>
 
       <div className="flex w-full h-full items-center justify-center">
-        <img
-          src={GAMEPAD_IMAGE}
-          alt="Gamepad"
-          className="w-1/2 h-auto object-cover"
-        />
+        <img src={GAMEPAD_IMAGE} alt="Gamepad" className="w-1/2 h-auto object-cover"/>
       </div>
 
       {/* Alert dialog */}
@@ -349,8 +309,7 @@ export default function Home() {
                 <strong>{selectedItem}</strong> Pressed
               </AlertDialogTitle>
               <AlertDialogDescription>
-                You pressed <strong>{selectedItem}</strong>. Assign a function and
-                choose an edge type.
+                You pressed <strong>{selectedItem}</strong>. Assign a function and choose a press type.
               </AlertDialogDescription>
             </AlertDialogHeader>
           ) : (
@@ -367,21 +326,13 @@ export default function Home() {
           <div className="space-y-4 py-2">
             <div className="flex flex-col space-y-2">
               <Label htmlFor="functionName">Function Name</Label>
-              <Input
-                id="functionName"
-                placeholder="Enter function name"
-                value={functionName}
-                onChange={(e) => setFunctionName(e.target.value)}
-              />
+              <Input id="functionName" placeholder="Enter function name" value={functionName} onChange={(e) => setFunctionName(e.target.value)}/>
             </div>
 
             {currentSelectionType === "button" && (
               <div className="flex flex-col space-y-2">
                 <Label>Press Type</Label>
-                <Select
-                  value={pressType}
-                  onValueChange={(val: any) => setPressType(val)}
-                >
+                <Select value={pressType} onValueChange={(val: any) => setPressType(val)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select press type" />
                   </SelectTrigger>
@@ -394,12 +345,15 @@ export default function Home() {
               </div>
             )}
           </div>
+          
+          <div className="flex items-center gap-2">
+            <Checkbox checked={exportInCode} onCheckedChange={(val) => setExportInCode(val === 'indeterminate' ? true : val)} />
+            <Label>Export in code</Label>
+          </div>
 
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleMap()}>
-              Save
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => handleMap()}>Save</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -407,9 +361,7 @@ export default function Home() {
      <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center space-y-2 backdrop-blur-lg grayscale bg-black/30 
         transition-all duration-1000 ease-in-out ${gamepadState !== GamepadState.DISCONNECTED ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
         <h1 className="text-2xl font-bold">Gamepad not connected</h1>
-        <h1 className="text-sm font-thin">
-          Please connect your gamepad and press a button to continue
-        </h1>
+        <h1 className="text-sm font-thin">Please connect your gamepad and press a button to continue</h1>
       </div>
     </div>
   )
