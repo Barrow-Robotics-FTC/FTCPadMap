@@ -33,7 +33,6 @@ class BaseGamepadItem {
   title_text_y: string
   map_text_y: string
 
-
   constructor(id: number, title: string, x: string, y: string, line_dir: "left" | "right" = "left", line_end_x: string, line_end_y: string) {
     this.id = id
     this.title = title
@@ -42,7 +41,7 @@ class BaseGamepadItem {
     this.text_dir = line_dir
     this.line_end_x = line_end_x
     this.line_end_y = line_end_y
-    this.end_line_end_x = this.text_dir === "left" ? addPercents(line_end_x, "-10%") : addPercents(line_end_x, "10%")
+    this.end_line_end_x = this.text_dir === "left" ? addPercents(line_end_x, "-12%") : addPercents(line_end_x, "12%")
     this.title_text = `${this.title} ${this.getType()}`
     this.text_x = this.text_dir === "left" ? addPercents(this.end_line_end_x, "0.5%") : addPercents(this.line_end_x, "0.5%")
     this.title_text_y = addPercents(this.line_end_y, "-1%")
@@ -73,6 +72,16 @@ class BaseGamepadItem {
       </>
     )
   }
+
+  itemToJSON(additional_keys: any = {}): JSON {
+    return {
+      id: this.id,
+      title: this.title,
+      map: this.map,
+      export_in_code: this.export_in_code,
+      ...additional_keys
+    }
+  }
 }
 
 class GamepadButton extends BaseGamepadItem {
@@ -86,13 +95,10 @@ class GamepadButton extends BaseGamepadItem {
     return "Button"
   }
 
-  toJSON() {
-    return {
-      id: this.id,
-      title: this.title,
-      map: this.map,
-      press_type: this.press_type,
-    }
+  toJSON(): JSON {
+    return this.itemToJSON({
+      press_type: this.press_type
+    })
   }
 }
 
@@ -106,11 +112,7 @@ class GamepadAxis extends BaseGamepadItem {
   }
 
   toJSON() {
-    return {
-      axis_id: this.id,
-      title: this.title,
-      map: this.map,
-    }
+    return this.itemToJSON()
   }
 }
 
@@ -141,14 +143,14 @@ const F310_GAMEPAD = new Gamepad(
     new GamepadButton(1, 'B', "66.5%", "45.25%", "right", "75%", "49.5%"),
     new GamepadButton(2, 'X', "59.75%", "45.25%", "right", "75%", "41.5%"),
     new GamepadButton(3, 'Y', "63%", "38.5%", "right", "75%", "34%"),
-    new GamepadButton(4, 'Left Bumper', "36.75%", "24%", "left", "30%", "25%"),
+    new GamepadButton(4, 'Left Bumper', "36.5%", "23.6%", "left", "30%", "25%"),
     new GamepadButton(5, 'Right Bumper', "63.5%", "24%" , "right", "70.25%", "25%"),
-    new GamepadButton(6, 'Left Trigger', "37.75%", "22.5%", "left", "34%", "17%"),
-    new GamepadButton(7, 'Right Trigger', "62.5%", "22.5%", "right", "66.25%", "17%"),
-    new GamepadButton(8, 'Back', "45.5%", "38.25%", "right", "44%", "14%"),
-    new GamepadButton(9, 'Start', "54.75%", "38.25%", "left", "60%", "20%"),
-    new GamepadButton(10, 'Left Stick', "43.5%", "60.75%", "left", "32%", "91%"),
-    new GamepadButton(11, 'Right Stick', "56.5%", "60.75%", "right", "68%", "91%"),
+    new GamepadButton(6, 'Left Trigger', "37.75%", "21.65%", "left", "34%", "17%"),
+    new GamepadButton(7, 'Right Trigger', "62.5%", "22.25%", "right", "66.25%", "17%"),
+    new GamepadButton(8, 'Back', "45.5%", "38.25%", "right", "44%", "13%"),
+    new GamepadButton(9, 'Start', "54.75%", "38.25%", "left", "58%", "21%"),
+    new GamepadButton(10, 'Left Stick', "43.5%", "60.75%", "left", "30%", "88%"),
+    new GamepadButton(11, 'Right Stick', "56.5%", "60.75%", "right", "70%", "88%"),
     new GamepadButton(12, 'D-Pad Up', "37.1%", "40.5%", "left", "25%", "34%"),
     new GamepadButton(13, 'D-Pad Down', "37.1%", "49.5%", "left", "25%", "57%"),
     new GamepadButton(14, 'D-Pad Left', "35%", "45%", "left", "25%", "41.5%"),
@@ -242,6 +244,7 @@ export default function Home() {
     }
     
     setDialogOpen(false)
+    console.log(gamepadInstance.toJSON())
     toast.success("Successfully mapped control!")
   }
 
