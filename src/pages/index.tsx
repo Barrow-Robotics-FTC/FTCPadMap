@@ -32,6 +32,7 @@ class BaseGamepadItem {
   text_x: string
   title_text_y: string
   map_text_y: string
+  textAnchor: "start" | "end"
 
   constructor(id: number, title: string, x: string, y: string, line_dir: "left" | "right" = "left", line_end_x: string, line_end_y: string) {
     this.id = id
@@ -43,9 +44,10 @@ class BaseGamepadItem {
     this.line_end_y = line_end_y
     this.end_line_end_x = this.text_dir === "left" ? addPercents(line_end_x, "-12%") : addPercents(line_end_x, "12%")
     this.title_text = `${this.title} ${this.getType()}`
-    this.text_x = this.text_dir === "left" ? addPercents(this.end_line_end_x, "0.5%") : addPercents(this.line_end_x, "0.5%")
-    this.title_text_y = addPercents(this.line_end_y, "-1%")
-    this.map_text_y = addPercents(this.line_end_y, "2.25%")
+    this.text_x = this.text_dir === "left" ? addPercents(this.end_line_end_x, "0.5%") : addPercents(this.end_line_end_x, "-0.5%")
+    this.title_text_y = addPercents(this.line_end_y, "-1.1%")
+    this.map_text_y = addPercents(this.line_end_y, "2.35%")
+    this.textAnchor = this.text_dir === "left" ? "start" : "end";
   }
 
   getType(): string { // Edited by the child class
@@ -59,14 +61,14 @@ class BaseGamepadItem {
   overlay(): JSX.Element {
     return (
       <>
-        <line x1={this.x} y1={this.y} x2={this.line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="1" />
-        <line x1={this.line_end_x} y1={this.line_end_y} x2={this.end_line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="1" />
+        <line x1={this.x} y1={this.y} x2={this.line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="2" />
+        <line x1={this.line_end_x} y1={this.line_end_y} x2={this.end_line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="2" />
         
-        <text x={this.text_x} y={this.title_text_y} fill="white" fontSize="1.1rem" fontWeight="bold">
+        <text x={this.text_x} y={this.title_text_y} fill="white" fontSize="1.1rem" fontWeight="bold" textAnchor={this.textAnchor}>
           {`${this.title} ${this.getType()}`}
         </text>
 
-        <text x={this.text_x} y={this.map_text_y} fill="white" fontSize="0.8rem">
+        <text x={this.text_x} y={this.map_text_y} fill="white" fontSize="0.8rem" textAnchor={this.textAnchor}> 
           {this.map ? this.map : "Unassigned"}
         </text>
       </>
@@ -272,7 +274,6 @@ export default function Home() {
 
   return (
     <div className="relative flex w-screen h-screen">
-      {/* Overlay with title and button */}
       <div className="absolute top-3 left-0 w-full flex justify-center items-center pointer-events-none">
         <div className='flex flex-col text-center space-y-2'> 
           <h1 className="text-xl font-bold pointer-events-none">FTC Gamepad Mapper</h1>
@@ -303,7 +304,6 @@ export default function Home() {
         <img src={GAMEPAD_IMAGE} alt="Gamepad" className="w-1/2 h-auto object-cover"/>
       </div>
 
-      {/* Alert dialog */}
       <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <AlertDialogContent>
           {currentSelectionType === "button" ? (
