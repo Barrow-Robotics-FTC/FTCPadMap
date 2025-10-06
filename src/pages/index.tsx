@@ -253,6 +253,7 @@ export default function Home() {
 
   async function exportImage() {
     try {
+      // @ts-ignore
       const svgElement = document.getElementById('overlay-svg') as SVGSVGElement
       if (!svgElement) {
         toast.error('SVG overlay not found')
