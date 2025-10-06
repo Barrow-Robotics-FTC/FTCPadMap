@@ -4,18 +4,16 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from 'sonner'
-import { Download, Code, Image as ImageIcon, Upload, Check } from 'lucide-react';
+import { Download, Image as ImageIcon, Upload } from 'lucide-react';
 
 class BaseGamepadItem {
   id: number
   title: string
   map: string | null = null
   prev_state: boolean = false
-  export_in_code: boolean = true
   x: number
   y: number
   text_dir: "left" | "right"
@@ -48,8 +46,8 @@ class BaseGamepadItem {
     return ""
   }
 
-  mapTo(map: string): void {
-    this.map = map
+  getAdditionalDetails(): string { // Edited by the child class
+    return ""
   }
 
   overlay() {
@@ -67,13 +65,11 @@ class BaseGamepadItem {
     )
   }
 
-
   itemToJSON(additional_keys: any = {}): JSON {
     return {
       id: this.id,
       title: this.title,
       map: this.map,
-      export_in_code: this.export_in_code,
       ...additional_keys
     }
   }
@@ -88,6 +84,10 @@ class GamepadButton extends BaseGamepadItem {
 
   getType(): string {
     return "Button"
+  }
+
+  getAdditionalDetails(): string {
+    return this.press_type ? this.press_type : ""
   }
 
   toJSON(): JSON {
@@ -126,6 +126,10 @@ class Gamepad {
     this.image_height = image_height
     this.buttons = buttons
     this.axes = axes
+  }
+
+  getButtonsAndAxes() {
+    return [...this.buttons, ...this.axes]
   }
 
   toJSON() {
@@ -185,7 +189,6 @@ export default function Home() {
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [functionName, setFunctionName] = useState<string>("")
   const [pressType, setPressType] = useState<"Rise" | "Fall" | "Press">("Press")
-  const [exportInCode, setExportInCode] = useState<boolean>(false)
 
   useEffect(() => {
     gamepadStateRef.current = gamepadState;
@@ -195,7 +198,6 @@ export default function Home() {
     setCurrentSelectionType(type)
     setSelectedItem(item.title)
     setFunctionName(item.map || "")
-    setExportInCode(item.export_in_code ?? true)
     if (item instanceof GamepadButton) {
       setPressType(item.press_type || "Press")
     }
@@ -205,7 +207,7 @@ export default function Home() {
   const loop = () => {
     const gamepad = navigator.getGamepads()[0]
     if (gamepadStateRef.current === GamepadState.READY && gamepad) { // If the gamepad is ready
-      [...gamepad.buttons, ...gamepad.axes].forEach((item, i) => { // For each button and axis
+      gamepadInstance.getButtonsAndAxes().forEach((item, i) => { // For each button and axis
         const type = i < gamepad.buttons.length ? "button" : "axis"
         const index = i < gamepad.buttons.length ? i : i - gamepad.buttons.length 
         const gamepadInstanceItem = type === "button" ? gamepadInstance.buttons[index] : gamepadInstance.axes[index]
@@ -243,8 +245,7 @@ export default function Home() {
       return
     }
 
-    item.mapTo(functionName)
-    item.export_in_code = exportInCode
+    item.map = functionName
     if (item instanceof GamepadButton) {
       item.press_type = pressType
     }
@@ -406,10 +407,7 @@ export default function Home() {
             <Upload className="h-6 w-6" />
             <input id="upload-json" type="file" accept=".ftcpadmap" className="hidden" onChange={(e) => importJSON(e)}/>
           </Button>
-          
-          <Button variant={"outline"} onClick={() => toast.info("Code button clicked")}>
-            <Code className="h-6 w-6" />
-          </Button>
+
           <Button variant={"outline"} onClick={() => exportImage()}>
             <ImageIcon className="h-6 w-6" />
           </Button>
@@ -467,11 +465,6 @@ export default function Home() {
                 </Select>
               </div>
             )}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Checkbox checked={exportInCode} onCheckedChange={(val) => setExportInCode(val === 'indeterminate' ? true : val)} />
-            <Label>Export in code</Label>
           </div>
 
           <AlertDialogFooter>
