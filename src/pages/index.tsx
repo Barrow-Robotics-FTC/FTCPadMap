@@ -56,7 +56,7 @@ class BaseGamepadItem {
     return (
       <>
         <line x1={this.x} y1={this.y} x2={this.line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="2" />
-        <line x1={this.line_end_x} y1={this.line_end_y} x2={this.end_line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="2" />
+        <line x1={this.line_end_x} y1={this.line_end_y} x2={this.end_line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="1.5" />
         <text x={this.text_x} y={this.title_text_y} fill="white" fontSize="1.1rem" fontWeight="bold" textAnchor={this.textAnchor}>
           {`${this.title} ${this.getType()}`}
         </text>
@@ -131,9 +131,6 @@ class Gamepad {
   toJSON() {
     return {
       name: this.name,
-      image_name: this.image_name,
-      image_width: this.image_width,
-      image_height: this.image_height,
       buttons: this.buttons.map(btn => btn.toJSON()),
       axes: this.axes.map(axis => axis.toJSON()),
     }
@@ -256,64 +253,80 @@ export default function Home() {
 
   async function exportImage() {
     try {
-      // Select the *overlay* SVG explicitly — add an id to it if needed
-      const svgElement = document.getElementById('overlay-svg')
+      const svgElement = document.getElementById('overlay-svg') as SVGSVGElement
       if (!svgElement) {
-        toast.error('Overlay SVG not found')
+        toast.error('SVG overlay not found')
         return
       }
 
-      // Serialize only that SVG
-      const svgData = new XMLSerializer().serializeToString(svgElement)
-      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+      // Find the <image> tag and convert its href to base64
+      const imageElement = svgElement.querySelector('image')
+      if (!imageElement) {
+        toast.error('Gamepad image not found in SVG')
+        return
+      }
+
+      const href = imageElement.getAttribute('href')
+      if (!href) {
+        toast.error('Gamepad image href missing')
+        return
+      }
+
+      // Load the controller image as a base64 string
+      const controllerImg = await fetch(href)
+      const blob = await controllerImg.blob()
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader()
+        reader.onloadend = () => resolve(reader.result as string)
+        reader.readAsDataURL(blob)
+      })
+
+      // Temporarily set the href to the base64 data
+      imageElement.setAttribute('href', base64)
+
+      // Serialize SVG with embedded PNG
+      const serializer = new XMLSerializer()
+      const svgString = serializer.serializeToString(svgElement)
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' })
       const svgUrl = URL.createObjectURL(svgBlob)
 
-      const loadImage = (src: string): Promise<HTMLImageElement> =>
-        new Promise((resolve, reject) => {
-          const img = new window.Image()
-          img.onload = () => resolve(img)
-          img.onerror = reject
-          img.src = src
-        })
-
-      // Load controller + overlay SVG as images
-      const [bgImg, overlayImg] = await Promise.all([
-        loadImage(`controllers/${gamepadInstance.image_name}.png`),
-        loadImage(svgUrl),
-      ])
-      
-      // Match overlay SVG to background image
-      bgImg.width = gamepadInstance.image_width
-      bgImg.height = gamepadInstance.image_height
-
-      // Match canvas to background image
+      // Create offscreen canvas
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
       const canvas = document.createElement('canvas')
-      canvas.width = bgImg.width
-      canvas.height = bgImg.height
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        toast.error('Canvas context missing')
-        return
-      }
+      const width = svgElement.viewBox.baseVal.width || svgElement.clientWidth
+      const height = svgElement.viewBox.baseVal.height || svgElement.clientHeight
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')!
 
-      // Draw base controller, then overlay
-      ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height)
-      ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height)
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => {
+          // Fill background before drawing image
+          ctx.fillStyle = 'hsl(240 10% 3.9%)'
+          ctx.fillRect(0, 0, width, height)
 
-      // Export as PNG
-      canvas.toBlob(blob => {
-        if (!blob) {
-          toast.error('Failed to export image')
-          return
+          ctx.drawImage(img, 0, 0, width, height)
+          URL.revokeObjectURL(svgUrl)
+          resolve()
         }
-        const link = document.createElement('a')
-        link.href = URL.createObjectURL(blob)
-        link.download = `${gamepadInstance.name}_mapping.png`
-        link.click()
-        toast.success('Image exported successfully!')
-      }, 'image/png')
+        img.onerror = reject
+        img.src = svgUrl
+      })
+
+      // Restore original href so your app stays functional
+      imageElement.setAttribute('href', href)
+
+      // Export PNG
+      const time = new Date().toISOString().slice(0, 19).replace('T', '_')
+      const link = document.createElement('a')
+      link.download = `${F310_GAMEPAD.name} ${time}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+
+      toast.success('Exported image successfully!')
     } catch (err) {
-      console.error(err)
+      console.error('Image export failed:', err)
       toast.error('Image export failed')
     }
   }
@@ -376,12 +389,12 @@ export default function Home() {
 
   return (
     <div className="relative flex w-screen h-screen">
-      <div className="absolute top-3 left-0 w-full flex justify-center items-center pointer-events-none">
+      <div className="absolute top-3 left-0 w-full flex justify-center items-center">
         <div className='flex flex-col text-center space-y-2'> 
-          <h1 className="text-xl font-bold pointer-events-none">FTC Gamepad Mapper</h1>
-          <h1 className="text-sm text-zinc-500 pointer-events-none">Press a button or move an axis on your gamepad to start mapping</h1>
+          <h1 className="text-xl font-bold">FTC Gamepad Mapper</h1>
+          <h1 className="text-sm text-zinc-500">Press a button or move an axis on your gamepad to start mapping</h1>
         </div>
-        <div className='absolute right-3 top-0 pointer-events-auto space-x-3'>
+        <div className='absolute right-3 top-0 space-x-3'>
           <Button variant={"outline"} onClick={() => exportJSON()}>
             <Download className="h-6 w-6" />
           </Button>
@@ -400,8 +413,8 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="relative flex items-center justify-center w-full h-full">
-        <svg id="overlay-svg" viewBox="0 0 1920 911" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: 'auto' }}>
+      <div className="relative flex items-center justify-center w-full h-full pointer-events-none">
+        <svg id="overlay-svg" viewBox="0 0 1920 911" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: 'auto', pointerEvents: 'none' }}>
           <image href={`controllers/${gamepadInstance.image_name}.png`} width="1920" height="911" />
           {gamepadInstance.buttons.map(btn => btn.overlay())}
           {gamepadInstance.axes.map(axis => axis.overlay())}
@@ -466,7 +479,7 @@ export default function Home() {
       </AlertDialog>
 
      <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center space-y-2 backdrop-blur-lg grayscale bg-black/30 
-        transition-all duration-1000 ease-in-out ${gamepadState !== GamepadState.DISCONNECTED ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+        transition-all duration-1000 ease-in-out ${gamepadState !== GamepadState.DISCONNECTED ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"}`}>
         <h1 className="text-2xl font-bold">Gamepad not connected</h1>
         <h1 className="text-sm font-thin">Please connect your gamepad and press a button to continue</h1>
       </div>
