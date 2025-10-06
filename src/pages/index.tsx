@@ -6,15 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from 'sonner'
-import { Download, Code, Image, Upload, Check } from 'lucide-react';
-
-function addPercents(a: string, b: string): string {
-  const numA = parseFloat(a.replace('%', ''));
-  const numB = parseFloat(b.replace('%', ''));
-  const sum = numA + numB;
-  return `${sum}%`;
-}
+import { Download, Code, Image as ImageIcon, Upload, Check } from 'lucide-react';
 
 class BaseGamepadItem {
   id: number
@@ -22,19 +16,19 @@ class BaseGamepadItem {
   map: string | null = null
   prev_state: boolean = false
   export_in_code: boolean = true
-  x: string
-  y: string
+  x: number
+  y: number
   text_dir: "left" | "right"
-  line_end_x: string
-  line_end_y: string
-  end_line_end_x: string
+  line_end_x: number
+  line_end_y: number
+  end_line_end_x: number
   title_text: string
-  text_x: string
-  title_text_y: string
-  map_text_y: string
+  text_x: number
+  title_text_y: number
+  map_text_y: number
   textAnchor: "start" | "end"
 
-  constructor(id: number, title: string, x: string, y: string, line_dir: "left" | "right" = "left", line_end_x: string, line_end_y: string) {
+  constructor(id: number, title: string, x: number, y: number, line_dir: "left" | "right" = "left", line_end_x: number, line_end_y: number) {
     this.id = id
     this.title = title
     this.x = x
@@ -42,11 +36,11 @@ class BaseGamepadItem {
     this.text_dir = line_dir
     this.line_end_x = line_end_x
     this.line_end_y = line_end_y
-    this.end_line_end_x = this.text_dir === "left" ? addPercents(line_end_x, "-12%") : addPercents(line_end_x, "12%")
+    this.end_line_end_x = this.text_dir === "left" ? line_end_x - 250 : line_end_x + 250
     this.title_text = `${this.title} ${this.getType()}`
-    this.text_x = this.text_dir === "left" ? addPercents(this.end_line_end_x, "0.5%") : addPercents(this.end_line_end_x, "-0.5%")
-    this.title_text_y = addPercents(this.line_end_y, "-1.1%")
-    this.map_text_y = addPercents(this.line_end_y, "2.35%")
+    this.text_x = this.text_dir === "left" ? this.end_line_end_x + 10 : this.end_line_end_x - 10
+    this.title_text_y = line_end_y - 10
+    this.map_text_y = line_end_y + 20
     this.textAnchor = this.text_dir === "left" ? "start" : "end";
   }
 
@@ -58,22 +52,21 @@ class BaseGamepadItem {
     this.map = map
   }
 
-  overlay(): JSX.Element {
+  overlay() {
     return (
       <>
         <line x1={this.x} y1={this.y} x2={this.line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="2" />
         <line x1={this.line_end_x} y1={this.line_end_y} x2={this.end_line_end_x} y2={this.line_end_y} stroke="white" strokeWidth="2" />
-        
         <text x={this.text_x} y={this.title_text_y} fill="white" fontSize="1.1rem" fontWeight="bold" textAnchor={this.textAnchor}>
           {`${this.title} ${this.getType()}`}
         </text>
-
-        <text x={this.text_x} y={this.map_text_y} fill="white" fontSize="0.8rem" textAnchor={this.textAnchor}> 
-          {this.map ? this.map : "Unassigned"}
+        <text x={this.text_x} y={this.map_text_y} fill="#737373" fontSize="0.8rem" textAnchor={this.textAnchor}>
+          {this.map || "Unassigned"}
         </text>
       </>
     )
   }
+
 
   itemToJSON(additional_keys: any = {}): JSON {
     return {
@@ -89,7 +82,7 @@ class BaseGamepadItem {
 class GamepadButton extends BaseGamepadItem {
   press_type: "Rise" | "Fall" | "Press" | null = null;
 
-  constructor(button_id: number, title: string, x: string, y: string, line_direction: "left" | "right", line_end_x: string, line_end_y: string) {
+  constructor(button_id: number, title: string, x:number, y: number, line_direction: "left" | "right", line_end_x: number, line_end_y: number) {
     super(button_id, title, x, y, line_direction, line_end_x, line_end_y)
   }
 
@@ -105,7 +98,7 @@ class GamepadButton extends BaseGamepadItem {
 }
 
 class GamepadAxis extends BaseGamepadItem {
-  constructor(id: number, title: string, x: string, y: string, line_direction: "left" | "right", line_end_x: string, line_end_y: string) {
+  constructor(id: number, title: string, x: number, y: number, line_direction: "left" | "right", line_end_x: number, line_end_y: number) {
     super(id, title, x, y, line_direction, line_end_x, line_end_y)
   }
 
@@ -120,11 +113,17 @@ class GamepadAxis extends BaseGamepadItem {
 
 class Gamepad {
   name: string
+  image_name: string
+  image_width: number
+  image_height: number
   buttons: GamepadButton[]
   axes: GamepadAxis[]
 
-  constructor(name: string, buttons: GamepadButton[], axes: GamepadAxis[]) {
+  constructor(name: string, image_name: string, image_width: number, image_height: number, buttons: GamepadButton[], axes: GamepadAxis[]) {
     this.name = name
+    this.image_name = image_name
+    this.image_width = image_width
+    this.image_height = image_height
     this.buttons = buttons
     this.axes = axes
   }
@@ -132,6 +131,9 @@ class Gamepad {
   toJSON() {
     return {
       name: this.name,
+      image_name: this.image_name,
+      image_width: this.image_width,
+      image_height: this.image_height,
       buttons: this.buttons.map(btn => btn.toJSON()),
       axes: this.axes.map(axis => axis.toJSON()),
     }
@@ -140,29 +142,32 @@ class Gamepad {
 
 const F310_GAMEPAD = new Gamepad(
   'Logitech F310',
+  'logitech_f310',
+  960,
+  455,
   [
-    new GamepadButton(0, 'A', "63%", "52.5%", "right", "75%", "57%"),
-    new GamepadButton(1, 'B', "66.5%", "45.25%", "right", "75%", "49.5%"),
-    new GamepadButton(2, 'X', "59.75%", "45.25%", "right", "75%", "41.5%"),
-    new GamepadButton(3, 'Y', "63%", "38.5%", "right", "75%", "34%"),
-    new GamepadButton(4, 'Left Bumper', "36.5%", "23.6%", "left", "30%", "25%"),
-    new GamepadButton(5, 'Right Bumper', "63.5%", "24%" , "right", "70.25%", "25%"),
-    new GamepadButton(6, 'Left Trigger', "37.75%", "21.65%", "left", "34%", "17%"),
-    new GamepadButton(7, 'Right Trigger', "62.5%", "22.25%", "right", "66.25%", "17%"),
-    new GamepadButton(8, 'Back', "45.5%", "38.25%", "right", "44%", "13%"),
-    new GamepadButton(9, 'Start', "54.75%", "38.25%", "left", "58%", "21%"),
-    new GamepadButton(10, 'Left Stick', "43.5%", "60.75%", "left", "30%", "88%"),
-    new GamepadButton(11, 'Right Stick', "56.5%", "60.75%", "right", "70%", "88%"),
-    new GamepadButton(12, 'D-Pad Up', "37.1%", "40.5%", "left", "25%", "34%"),
-    new GamepadButton(13, 'D-Pad Down', "37.1%", "49.5%", "left", "25%", "57%"),
-    new GamepadButton(14, 'D-Pad Left', "35%", "45%", "left", "25%", "49.5%"),
-    new GamepadButton(15, 'D-Pad Right', "39%", "45%", "left", "25%", "41.5%"),
+    new GamepadButton(0, 'A', 1235, 480, "right", 1450, 519),
+    new GamepadButton(1, 'B', 1305, 410, "right", 1450, 451),
+    new GamepadButton(2, 'X', 1165, 410, "right", 1450, 378),
+    new GamepadButton(3, 'Y', 1235, 340, "right", 1450, 310),
+    new GamepadButton(4, 'Left Bumper', 695, 188, "left", 470, 210),
+    new GamepadButton(5, 'Right Bumper', 1225, 188, "right", 1450, 210),
+    new GamepadButton(6, 'Left Trigger', 695, 172, "left", 470, 137),
+    new GamepadButton(7, 'Right Trigger', 1225, 172, "right", 1450, 137),
+    new GamepadButton(8, 'Back', 861, 335, "left", 940, 127),
+    new GamepadButton(9, 'Start', 1059, 335, "right", 980, 127),
+    new GamepadButton(10, 'Left Stick', 820, 560, "left", 470, 630),
+    new GamepadButton(11, 'Right Stick', 1100, 560, "right", 1450, 650),
+    new GamepadButton(12, 'D-Pad Up', 687, 365, "left", 470, 310),
+    new GamepadButton(13, 'D-Pad Down', 687, 448, "left", 470, 530),
+    new GamepadButton(14, 'D-Pad Left', 642, 405, "left", 470, 457),
+    new GamepadButton(15, 'D-Pad Right', 735, 405, "left", 470, 383),
   ],
   [
-    new GamepadAxis(0, 'Left Stick X', "43.5%", "60.75%", "left", "46.87%", "85%"),
-    new GamepadAxis(1, 'Left Stick Y', "43.5%", "60.75%", "left", "48%", "93%"),
-    new GamepadAxis(2, 'Right Stick X', "56.5%", "60.75%", "right", "53.13%", "85%"),
-    new GamepadAxis(3, 'Right Stick Y', "56.5%", "60.75%", "right", "52%", "93%"),
+    new GamepadAxis(0, 'Left Stick X', 820, 560, "left", 550, 800),
+    new GamepadAxis(1, 'Left Stick Y', 820, 560, "left", 940, 850),
+    new GamepadAxis(2, 'Right Stick X', 1100, 560, "right", 1370, 800),
+    new GamepadAxis(3, 'Right Stick Y', 1100, 560, "right", 980, 850),
   ],
 )
 
@@ -174,7 +179,6 @@ enum GamepadState {
 
 export default function Home() {
   const gamepadInstance = F310_GAMEPAD
-  const GAMEPAD_IMAGE = "controllers/logitech_f310.png"
 
   const [gamepadState, setGamepadState] = useState<GamepadState>(GamepadState.DISCONNECTED)
   const gamepadStateRef = useRef(gamepadState); // Seperate ref for the loop
@@ -250,6 +254,104 @@ export default function Home() {
     toast.success("Successfully mapped control!")
   }
 
+  async function exportImage() {
+    try {
+      // Select the *overlay* SVG explicitly — add an id to it if needed
+      const svgElement = document.getElementById('overlay-svg')
+      if (!svgElement) {
+        toast.error('Overlay SVG not found')
+        return
+      }
+
+      // Serialize only that SVG
+      const svgData = new XMLSerializer().serializeToString(svgElement)
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+      const svgUrl = URL.createObjectURL(svgBlob)
+
+      const loadImage = (src: string): Promise<HTMLImageElement> =>
+        new Promise((resolve, reject) => {
+          const img = new window.Image()
+          img.onload = () => resolve(img)
+          img.onerror = reject
+          img.src = src
+        })
+
+      // Load controller + overlay SVG as images
+      const [bgImg, overlayImg] = await Promise.all([
+        loadImage(`controllers/${gamepadInstance.image_name}.png`),
+        loadImage(svgUrl),
+      ])
+      
+      // Match overlay SVG to background image
+      bgImg.width = gamepadInstance.image_width
+      bgImg.height = gamepadInstance.image_height
+
+      // Match canvas to background image
+      const canvas = document.createElement('canvas')
+      canvas.width = bgImg.width
+      canvas.height = bgImg.height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        toast.error('Canvas context missing')
+        return
+      }
+
+      // Draw base controller, then overlay
+      ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height)
+      ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height)
+
+      // Export as PNG
+      canvas.toBlob(blob => {
+        if (!blob) {
+          toast.error('Failed to export image')
+          return
+        }
+        const link = document.createElement('a')
+        link.href = URL.createObjectURL(blob)
+        link.download = `${gamepadInstance.name}_mapping.png`
+        link.click()
+        toast.success('Image exported successfully!')
+      }, 'image/png')
+    } catch (err) {
+      console.error(err)
+      toast.error('Image export failed')
+    }
+  }
+
+  function exportJSON() {
+    try {
+      const jsonData = JSON.stringify(gamepadInstance.toJSON(), null, 2)
+      const blob = new Blob([jsonData], { type: 'application/json' })
+      const link = document.createElement('a')
+      const time = new Date().toISOString().slice(0, 19).replace('T', '_')
+      link.href = URL.createObjectURL(blob)
+      link.download = `${gamepadInstance.name} ${time}.ftcpadmap`
+      link.click()
+      toast.success('Exported JSON successfully!')
+    } catch (err) {
+      console.error(err)
+      toast.error('JSON export failed')
+    }
+  }
+
+  function importJSON(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string)
+        // You'll handle the parsing/updating logic
+        toast.success('JSON uploaded successfully')
+        console.log('Parsed JSON:', data)
+      } catch (err) {
+        toast.error('Invalid JSON file')
+      }
+    }
+    reader.readAsText(file)
+  }
+
   useEffect(() => {
     const onConnect = () => {
       setGamepadState(GamepadState.CONNECTED)
@@ -277,31 +379,33 @@ export default function Home() {
       <div className="absolute top-3 left-0 w-full flex justify-center items-center pointer-events-none">
         <div className='flex flex-col text-center space-y-2'> 
           <h1 className="text-xl font-bold pointer-events-none">FTC Gamepad Mapper</h1>
-          <h1 className="text-sm text-zinc-700 pointer-events-none">Press a button or move an axis on your gamepad to start mapping</h1>
+          <h1 className="text-sm text-zinc-500 pointer-events-none">Press a button or move an axis on your gamepad to start mapping</h1>
         </div>
         <div className='absolute right-3 top-0 pointer-events-auto space-x-3'>
-          <Button variant={"outline"} onClick={() => toast.info("Download button clicked")}>
+          <Button variant={"outline"} onClick={() => exportJSON()}>
             <Download className="h-6 w-6" />
           </Button>
-          <Button variant={"outline"} onClick={() => toast.info("Upload button clicked")}>
+
+          <Button variant="outline" onClick={() => document.getElementById('upload-json')?.click()}>
             <Upload className="h-6 w-6" />
+            <input id="upload-json" type="file" accept=".ftcpadmap" className="hidden" onChange={(e) => importJSON(e)}/>
           </Button>
+          
           <Button variant={"outline"} onClick={() => toast.info("Code button clicked")}>
             <Code className="h-6 w-6" />
           </Button>
-          <Button variant={"outline"} onClick={() => toast.info("Image button clicked")}>
-            <Image className="h-6 w-6" />
+          <Button variant={"outline"} onClick={() => exportImage()}>
+            <ImageIcon className="h-6 w-6" />
           </Button>
         </div>
       </div>
 
-      <svg className='flex w-screen h-screen absolute z-40 pointer-events-none'>
-        {gamepadInstance.buttons.map((btn, i) => ( btn.overlay() ))}
-        {gamepadInstance.axes.map((axis, i) => ( axis.overlay() ))}
-      </svg>
-
-      <div className="flex w-full h-full items-center justify-center">
-        <img src={GAMEPAD_IMAGE} alt="Gamepad" className="w-1/2 h-auto object-cover"/>
+      <div className="relative flex items-center justify-center w-full h-full">
+        <svg id="overlay-svg" viewBox="0 0 1920 911" preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: 'auto' }}>
+          <image href={`controllers/${gamepadInstance.image_name}.png`} width="1920" height="911" />
+          {gamepadInstance.buttons.map(btn => btn.overlay())}
+          {gamepadInstance.axes.map(axis => axis.overlay())}
+        </svg>
       </div>
 
       <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
