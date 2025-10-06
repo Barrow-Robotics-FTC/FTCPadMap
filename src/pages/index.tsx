@@ -191,6 +191,17 @@ export default function Home() {
     gamepadStateRef.current = gamepadState;
   }, [gamepadState]);
 
+  function openDialogFor(item: GamepadButton | GamepadAxis, type: "button" | "axis") {
+    setCurrentSelectionType(type)
+    setSelectedItem(item.title)
+    setFunctionName(item.map || "")
+    setExportInCode(item.export_in_code ?? true)
+    if (item instanceof GamepadButton) {
+      setPressType(item.press_type || "Press")
+    }
+    setDialogOpen(true)
+  }
+
   const loop = () => {
     const gamepad = navigator.getGamepads()[0]
     if (gamepadStateRef.current === GamepadState.READY && gamepad) { // If the gamepad is ready
@@ -203,15 +214,7 @@ export default function Home() {
           const condition = type === "button" ? gamepad.buttons[index].pressed : Math.abs(gamepad.axes[index]) > 0.5
           
           if (condition && !gamepadInstanceItem.prev_state) { // If the item is pressed/moved and was not previously pressed
-            setCurrentSelectionType(type)
-            setSelectedItem(gamepadInstanceItem.title)
-            setFunctionName(gamepadInstanceItem.map || "")
-            setExportInCode(gamepadInstanceItem.export_in_code || true)
-            setDialogOpen(true)
-          }
-
-          if (gamepadInstanceItem instanceof GamepadButton) { // If the item is a button
-            setPressType(gamepadInstanceItem.press_type || "Press")
+            openDialogFor(gamepadInstanceItem, type)
           }
 
           gamepadInstanceItem.prev_state = condition
@@ -303,7 +306,6 @@ export default function Home() {
 
       await new Promise<void>((resolve, reject) => {
         img.onload = () => {
-          // Fill background before drawing image
           ctx.fillStyle = 'hsl(240 10% 3.9%)'
           ctx.fillRect(0, 0, width, height)
 
