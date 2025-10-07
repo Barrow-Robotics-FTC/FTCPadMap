@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider"
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { Toaster } from "sonner"
-import { TooltipProvider } from "@/components/ui/tooltip"
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,7 +17,7 @@ export default function MyApp({ Component, pageProps }: AppProps) {
   return (
     <ThemeProvider defaultTheme='dark' attribute='class'>
       <Toaster position='bottom-center' richColors theme='dark' />
-      <TooltipProvider delayDuration={500}>
+      <TooltipProvider>
         <Component {...pageProps} />
       </TooltipProvider>
     </ThemeProvider>

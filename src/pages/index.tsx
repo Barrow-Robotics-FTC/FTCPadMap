@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
 import { Download, Image as ImageIcon, Upload } from 'lucide-react';
 
@@ -76,7 +76,7 @@ class BaseGamepadItem {
 }
 
 class GamepadButton extends BaseGamepadItem {
-  press_type: "Rise" | "Fall" | "Press" | null = null;
+  press_type: "On press" | "On release" | "While pressed" | null = null;
 
   constructor(button_id: number, title: string, x:number, y: number, line_direction: "left" | "right", line_end_x: number, line_end_y: number) {
     super(button_id, title, x, y, line_direction, line_end_x, line_end_y)
@@ -87,7 +87,9 @@ class GamepadButton extends BaseGamepadItem {
   }
 
   getAdditionalDetails(): string {
-    return this.press_type ? this.press_type : ""
+    if (!this.press_type) return ""
+    
+    return `The action is triggered: ${this.press_type}`
   }
 
   toJSON(): JSON {
@@ -188,7 +190,7 @@ export default function Home() {
   const [currentSelectionType, setCurrentSelectionType] = useState<"button" | "axis">("button")
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
   const [functionName, setFunctionName] = useState<string>("")
-  const [pressType, setPressType] = useState<"Rise" | "Fall" | "Press">("Press")
+  const [pressType, setPressType] = useState<"On press" | "On release" | "While pressed">("While pressed")
 
   useEffect(() => {
     gamepadStateRef.current = gamepadState;
@@ -199,7 +201,7 @@ export default function Home() {
     setSelectedItem(item.title)
     setFunctionName(item.map || "")
     if (item instanceof GamepadButton) {
-      setPressType(item.press_type || "Press")
+      setPressType(item.press_type || "While pressed")
     }
     setDialogOpen(true)
   }
@@ -396,7 +398,7 @@ export default function Home() {
       <div className="absolute top-3 left-0 w-full flex justify-center items-center">
         <div className='flex flex-col text-center space-y-2'> 
           <h1 className="text-xl font-bold">FTC Gamepad Mapper</h1>
-          <h1 className="text-sm text-zinc-500">Press a button or move an axis on your gamepad to start mapping</h1>
+          <h1 className="text-sm text-zinc-500 max-w-[90vw]">Press a button or move an axis on your gamepad to start mapping. Hover over the end of a line to see more information about a map.</h1>
         </div>
         <div className='absolute right-3 top-0 space-x-3'>
           <Button variant={"outline"} onClick={() => exportJSON()}>
@@ -420,6 +422,21 @@ export default function Home() {
           {gamepadInstance.buttons.map(btn => btn.overlay())}
           {gamepadInstance.axes.map(axis => axis.overlay())}
         </svg>
+        <div className="absolute top-0 left-0 w-full h-full pointer-events-auto">
+          {gamepadInstance.getButtonsAndAxes().map((item, i) => (
+            <Tooltip key={`tooltip_${i}`}>
+              <TooltipTrigger asChild>
+                <div className="absolute w-8 h-8 bg-transparent cursor-pointer opacity-75 rounded-full hover:bg-zinc-600" style={{ left: `${item.end_line_end_x - 16}px`, top: `${item.line_end_y - 16}px` }} />
+              </TooltipTrigger>
+              <TooltipContent className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2">
+                <h1 className="font-semibold text-lg">{`${item.title} ${item.getType()}`}</h1>
+                <hr className="my-1 border-zinc-700" />
+                <p className="text-zinc-500">Map: {item.map || 'Unassigned'}</p>
+                <p className="text-zinc-500">{item.getAdditionalDetails()}</p>
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
       </div>
 
       <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -458,9 +475,9 @@ export default function Home() {
                     <SelectValue placeholder="Select press type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Rise">Rise</SelectItem>
-                    <SelectItem value="Fall">Fall</SelectItem>
-                    <SelectItem value="Press">Press</SelectItem>
+                    <SelectItem value="On release">On release</SelectItem>
+                    <SelectItem value="On press">On press</SelectItem>
+                    <SelectItem value="While pressed">While pressed</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
