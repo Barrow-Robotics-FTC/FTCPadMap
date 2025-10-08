@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
 // TODO: Move classes and stuff to helper file
-// TODO: Add charachter limit to input
 // TODO: Parse input JSON
 // TODO: Add PS4 and Xbox 360 presets
 // TODO: Add controller preset selection
@@ -52,7 +51,7 @@ interface Gamepad {
 }
 
 const endLineX = (item: GamepadItem) : number => {
-  return item.line_dir === "left" ? item.line_end_x - 250 : item.line_end_x + 250
+  return item.line_dir === "left" ? item.line_end_x - 370 : item.line_end_x + 370
 }
 
 const GamepadItemOverlay: React.FC<{ item: GamepadItem }> = ({ item }) => {
@@ -68,7 +67,7 @@ const GamepadItemOverlay: React.FC<{ item: GamepadItem }> = ({ item }) => {
       <text x={textX} y={line_end_y - 10} fill="white" fontSize="1.1rem" fontWeight="bold" textAnchor={textAnchor}>
         {`${title} ${type}`}
       </text>
-      <text x={textX} y={line_end_y + 20} fill="#737373" fontSize="0.8rem" textAnchor={textAnchor}>
+      <text x={textX} y={line_end_y + 20} fill="#737373" fontSize="0.9rem" textAnchor={textAnchor}>
         {map || "Unassigned"}
       </text>
     </>
@@ -80,7 +79,7 @@ function gamepadToJson(gamepad: Gamepad): any {
     name: gamepad.name,
     items: gamepad.items.map((item) => ({
       id: item.id,
-      map: item.map,
+      map: item.map ?? null,
       ...(item.type === "Button" && { press_type: item.press_type }),
       type: item.type
     })),
@@ -101,6 +100,7 @@ function getGamepadItemCode(item: GamepadItem): string | undefined { // Note: un
   }
 }
 
+const MAP_INPUT_CHARACTER_LIMIT = 40
 interface GamepadDialogState {
   dialog_open: boolean
   gamepad_item?: GamepadItem
@@ -131,8 +131,8 @@ export const F310_GAMEPAD: Gamepad = {
     { id: 5, title: "Right Bumper", sdk_alias: "right_bumper", x: 1225, y: 188, line_dir: "right", line_end_x: 1450, line_end_y: 210, type: "Button" },
     { id: 6, title: "Left Trigger", sdk_alias: "left_trigger", x: 695, y: 172, line_dir: "left", line_end_x: 470, line_end_y: 137, type: "Button" },
     { id: 7, title: "Right Trigger", sdk_alias: "right_trigger", x: 1225, y: 172, line_dir: "right", line_end_x: 1450, line_end_y: 137, type: "Button" },
-    { id: 8, title: "Back", sdk_alias: "back", x: 861, y: 335, line_dir: "left", line_end_x: 940, line_end_y: 127, type: "Button" },
-    { id: 9, title: "Start", sdk_alias: "start", x: 1059, y: 335, line_dir: "right", line_end_x: 980, line_end_y: 127, type: "Button" },
+    { id: 8, title: "Back", sdk_alias: "back", x: 861, y: 335, line_dir: "left", line_end_x: 940, line_end_y: 110, type: "Button" },
+    { id: 9, title: "Start", sdk_alias: "start", x: 1059, y: 335, line_dir: "right", line_end_x: 980, line_end_y: 110, type: "Button" },
     { id: 10, title: "Left Stick", sdk_alias: "left_stick_button", x: 820, y: 560, line_dir: "left", line_end_x: 470, line_end_y: 630, type: "Button" },
     { id: 11, title: "Right Stick", sdk_alias: "right_stick_button", x: 1100, y: 560, line_dir: "right", line_end_x: 1450, line_end_y: 650, type: "Button" },
     { id: 12, title: "D-Pad Up", sdk_alias: "dpad_up", x: 687, y: 365, line_dir: "left", line_end_x: 470, line_end_y: 310, type: "Button" },
@@ -189,6 +189,11 @@ export default function Home() {
     }
 
     requestAnimationFrame(loop)
+  }
+
+  function handleMapInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (e.target.value.trim().length > MAP_INPUT_CHARACTER_LIMIT) return
+    setGamepadDialogState({ ...gamepadDialogState, map: e.target.value })
   }
 
   function handleMap() {
@@ -435,13 +440,9 @@ export default function Home() {
 
               <div className="space-y-4 py-2">
                 <div className="flex flex-col space-y-2">
-                  <Label htmlFor="functionName">Function Name</Label>
-                  <Input
-                    id="functionName"
-                    placeholder="Enter function name"
-                    value={gamepadDialogState.map}
-                    onChange={(e) => setGamepadDialogState({ ...gamepadDialogState, map: e.target.value })}
-                  />
+                  <Label htmlFor="mapInput">Function Name</Label>
+                  <Input id="mapInput" placeholder="Enter the name of the function you want to map" value={gamepadDialogState.map} onChange={(e) => handleMapInputChange(e)}/>
+                  <Label className={`text-xs ${gamepadDialogState.map.trim().length === MAP_INPUT_CHARACTER_LIMIT ? "text-red-400" : "text-zinc-400"}`}>{gamepadDialogState.map.trim().length}/{MAP_INPUT_CHARACTER_LIMIT}</Label>
                 </div>
 
                 {gamepadDialogState.gamepad_item.type === "Button" && (
