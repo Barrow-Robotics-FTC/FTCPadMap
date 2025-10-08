@@ -33,6 +33,18 @@ interface BaseGamepadItem {
   prev_state?: boolean
 }
 
+function isValidImportedGamepadItem(obj: any): obj is BaseGamepadItem {
+  if (typeof obj !== "object" || obj === null) return false; // Check if it's an object and not null
+  if (typeof obj.id !== "number") return false; // Check if id is a number
+  // allow undefined or null or string for map (export uses null for unassigned)
+  if (obj.map !== undefined && obj.map !== null && typeof obj.map !== "string") return false;
+  if (obj.type !== "Button" && obj.type !== "Axis") return false; // Check if type is either Button or Axis
+  // for Button, allow press_type to be null or a string
+  if (obj.type === "Button" && obj.press_type !== null && typeof obj.press_type !== "string") return false;
+
+  return true;
+}
+
 interface GamepadButton extends BaseGamepadItem {
   type: "Button"
   press_type?: PressType
@@ -80,7 +92,7 @@ function gamepadToJson(gamepad: Gamepad): any {
     items: gamepad.items.map((item) => ({
       id: item.id,
       map: item.map ?? null,
-      ...(item.type === "Button" && { press_type: item.press_type }),
+      ...(item.type === "Button" && { press_type: item.press_type ?? null }),
       type: item.type
     })),
   };
@@ -148,8 +160,12 @@ export const F310_GAMEPAD: Gamepad = {
   ],
 }
 
+const CONTROLLERS_LIST = [
+  F310_GAMEPAD
+]
+
 export default function Home() {
-  const gamepadInstance = F310_GAMEPAD
+  const [gamepadInstance, setGamepadInstance] = useState<Gamepad>(structuredClone(CONTROLLERS_LIST[0]))
   const [gamepadState, setGamepadState] = useState<GamepadState>(GamepadState.DISCONNECTED)
   const gamepadStateRef = useRef(gamepadState); // Seperate ref for the loop
   const [gamepadDialogState, setGamepadDialogState] = useState<GamepadDialogState>(DEFAULT_GAMEPAD_DIALOG_STATE)
@@ -158,6 +174,12 @@ export default function Home() {
   useEffect(() => {
     gamepadStateRef.current = gamepadState;
   }, [gamepadState]);
+
+  function replaceGamepadItem(item: GamepadItem) {
+    const index = gamepadInstance.items.findIndex(i => i.id === item.id)
+    gamepadInstance.items[index] = item
+    setGamepadInstance(gamepadInstance)
+  }
 
   function openDialogFor(item: GamepadItem) {
     var press_type = null
@@ -210,9 +232,9 @@ export default function Home() {
     if (gamepadDialogState.gamepad_item.type === "Button") {
       gamepadDialogState.gamepad_item.press_type = gamepadDialogState.press_type
     }
-    
+
+    replaceGamepadItem(gamepadDialogState.gamepad_item)
     closeDialog()
-    console.log(gamepadToJson(gamepadInstance))
     toast.success("Successfully mapped control!")
   }
 
@@ -320,9 +342,50 @@ export default function Home() {
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string)
-        // You'll handle the parsing/updating logic
-        toast.success('JSON uploaded successfully')
-        console.log('Parsed JSON:', data)
+        
+        let found_matching_controller = false
+        let matching_controller : Gamepad | null = null
+        for (let i = 0; i < CONTROLLERS_LIST.length; i++) {
+          if (data.name === CONTROLLERS_LIST[i].name) {
+            found_matching_controller = true
+            matching_controller = CONTROLLERS_LIST[i]
+          }
+        }
+        if (!found_matching_controller || !matching_controller) {
+          toast.error('Controller configuration not found')
+          return
+        }
+
+        const editing_controller = structuredClone(matching_controller)
+        for (let i = 0; i < data.items.length; i++) {
+          const item = data.items[i]
+          if (!isValidImportedGamepadItem(item)) {
+            console.log("Found invalid item in save file:", item)
+            toast.error("Invalid gamepad item found in save file")
+            return
+          }
+
+          if (!editing_controller.items.some(i => i.id === item.id)) {
+            console.log("Found invalid item ID in save file:", item)
+            toast.error("Invalid gamepad item ID found in save file")
+            return
+          }
+        }
+
+        for (let i = 0; i < data.items.length; i++) {
+          const item = data.items[i]
+          const editing_item = editing_controller.items.find(i => i.id === item.id)
+          if (editing_item) {
+            editing_item.map = item.map
+            if (item.type === "Button") {
+              // @ts-ignore (complains that press_type doesn't exist even though it does)
+              editing_item.press_type = item.press_type
+            }
+          }
+        }
+        
+        setGamepadInstance(editing_controller)
+        toast.success('Imported save file successfully!')
       } catch (err) {
         toast.error('Invalid JSON file')
       }
