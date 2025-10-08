@@ -105,6 +105,7 @@ const DEFAULT_GAMEPAD_DIALOG_STATE: GamepadDialogState = { dialog_open: false, m
 
 enum GamepadState {
   DISCONNECTED,
+  DISCONNECTED_MANUAL_MODE,
   CONNECTED,
   READY
 }
@@ -533,10 +534,13 @@ export default function Home() {
         </AlertDialogContent>
       </AlertDialog>
 
-     <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center space-y-2 backdrop-blur-lg grayscale bg-black/30 
+     <div className={`absolute inset-0 z-50 flex flex-col items-center justify-center space-y-4 backdrop-blur-lg grayscale bg-black/30 
         transition-all duration-1000 ease-in-out ${gamepadState !== GamepadState.DISCONNECTED ? "opacity-0 pointer-events-none" : "opacity-100 pointer-events-auto"}`}>
-        <h1 className="text-2xl font-bold">Gamepad not connected</h1>
-        <h1 className="text-sm font-thin">Please connect your gamepad and press a button to continue</h1>
+        <div className='flex flex-col items-center space-y-2'>
+          <h1 className="text-2xl font-bold">Gamepad not connected</h1>
+          <h1 className="text-sm font-thin">Please connect your gamepad and press a button to continue or use manual mode</h1>
+        </div>
+        <Button onClick={() => setGamepadState(GamepadState.DISCONNECTED_MANUAL_MODE)}>Manual Mode</Button>
       </div>
     </div>
   )
