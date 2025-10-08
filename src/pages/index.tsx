@@ -11,6 +11,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
+// TODO: Move classes and stuff to helper file
+// TODO: Add charachter limit to input
+// TODO: Parse input JSON
+// TODO: Add PS4 and Xbox 360 presets
+// TODO: Add controller preset selection
+
 type LineDirection = "left" | "right"
 type PressType = "On press" | "On release" | "While pressed" | null
 type GamepadItem = GamepadButton | GamepadAxis
@@ -339,7 +345,7 @@ export default function Home() {
       window.removeEventListener("gamepadconnected", onConnect);
       window.removeEventListener("gamepaddisconnected", onDisconnect);
     };
-  }, []);
+  }, [loop]); // Loop to satisfy eslint
 
   return (
     <div className="relative flex w-screen h-screen">
@@ -493,7 +499,7 @@ export default function Home() {
             <AccordionItem value="How to use (manual)">
               <AccordionTrigger>How to use (manual)</AccordionTrigger>
               <AccordionContent>
-                If you have a aren't using a gamepad, you can press at the end of any line that cooresponds with a gamepad button or axis.
+                If you have a aren&apos;t using a gamepad, you can press at the end of any line that cooresponds with a gamepad button or axis.
                 Once you press one, a dialog will open where you can type a function name and choose a press type (for buttons).
               </AccordionContent>
             </AccordionItem>
