@@ -11,11 +11,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
-// TODO: Move classes and stuff to helper file
-// TODO: Parse input JSON
-// TODO: Add PS4 and Xbox 360 presets
-// TODO: Add controller preset selection
-
 type LineDirection = "left" | "right"
 type PressType = "On press" | "On release" | "While pressed" | null
 type GamepadItem = GamepadButton | GamepadAxis
