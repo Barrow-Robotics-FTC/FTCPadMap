@@ -372,17 +372,26 @@ export default function Home() {
           {gamepadInstance.items.map((item, i) => (
             <Tooltip key={`tooltip_${i}`}>
               <TooltipTrigger asChild>
-                <div className="absolute w-8 h-8 bg-transparent cursor-pointer opacity-75 rounded-full hover:bg-zinc-600/70 transition-colors duration-200"
-                  style={{ left: `${endLineX(item) - 16}px`, top: `${item.line_end_y - 16}px` }} onClick={() => openDialogFor(item)}/>
+                <div
+                  className="absolute w-8 h-8 bg-transparent cursor-pointer opacity-75 rounded-full hover:bg-zinc-600/70 transition-colors duration-200"
+                  style={{ left: `${endLineX(item) - 16}px`, top: `${item.line_end_y - 16}px` }}
+                  onClick={() => openDialogFor(item)}
+                />
               </TooltipTrigger>
               <TooltipContent className="p-2 bg-zinc-900 border border-zinc-800 text-left space-y-2 max-w-sm">
                 <div>
-                  <h1 className="font-semibold text-base text-white">{item.title} {item.type}</h1>
-                  <p className="text-zinc-500 text-sm">Map: {item.map || 'Unassigned'}</p>
+                  <h1 className="font-semibold text-base text-white">
+                    {item.title} {item.type}
+                  </h1>
+                  <p className="text-zinc-500 text-sm"><strong className='text-zinc-400'>Map:</strong> {item.map || 'Unassigned'}</p>
+
+                  {item.type === "Button" && (
+                    <p className="text-zinc-500 text-sm"><strong className='text-zinc-400'>Press Type:</strong> {item.press_type ?? "While pressed"}</p>
+                  )}
                 </div>
 
-                <div className="pt-1 border-t border-zinc-800">
-                  <p className="text-xs text-zinc-400 mb-1">Code snippet:</p>
+                <div className="pt-1 border-t border-zinc-800 space-y-1">
+                  <strong className="text-xs text-zinc-400">Access in code:</strong>
                   <code className="block text-xs bg-zinc-800/70 border border-zinc-700 text-zinc-300 rounded-md p-1 font-mono">
                     {getGamepadItemCode(item)}
                   </code>
