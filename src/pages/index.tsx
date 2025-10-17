@@ -171,9 +171,15 @@ export default function Home() {
   }, [gamepadState]);
 
   function replaceGamepadItem(item: GamepadItem) {
-    const index = gamepadInstance.items.findIndex(i => i.id === item.id)
-    gamepadInstance.items[index] = item
-    setGamepadInstance(gamepadInstance)
+    const index = gamepadInstance.items.findIndex(
+      (i) => i.id === item.id && i.type === item.type
+    )
+    if (index === -1) return
+
+    const newItems = [...gamepadInstance.items]
+    newItems[index] = { ...newItems[index], ...item }
+
+    setGamepadInstance({ ...gamepadInstance, items: newItems })
   }
 
   function openDialogFor(item: GamepadItem) {
